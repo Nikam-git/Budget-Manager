@@ -1,0 +1,142 @@
+﻿@page "/cashin"
+@using Budget_Manager.Components.Model
+@using Budget_Manager.Components.Services
+@inject DealService DealService
+
+<div class="cash-in">
+
+    <div class="cash-in-top">
+        <div class="filteration-group">
+            <input @bind="QuerySearch" placeholder="Search Inflow" />
+        </div>
+        <div class="filteration-group">
+            <input type="text" @bind="TagToFilter" placeholder="Search by Tags" />
+        </div>
+        <div class="filteration-group">
+            <label for="Date">Date:</label>
+            <input type="date" id="date" @bind="DateToFilter" />
+        </div>
+
+        <div class="filter-action">
+            <button @onclick="Filter">SORT</button>
+            <button @onclick="Clear">Reset Sort</button>
+        </div>
+    </div>
+
+    <div class="cash-in-middle">
+        <button @onclick="SortingByDate">DATE</button>
+    </div>
+
+    <div class="cash-in-bottom">
+        <div class="cash-in-bottom-left">
+            <h3>Cash Inflow Record</h3>
+            <h2>@TotalCashInflow</h2>
+            @if (Deals.Count > 0)
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cash Inflow Source</th>
+                            <th>Cash Inflow Amount</th>
+                            <th>Cash Inflow Date</th>
+                            <th>Cash Inflow Tag</th>
+                            <th>Cash Inflow Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var deal in DealsFiltered)
+                        {
+                            <tr>
+                                <td>@deal.Description</td>
+                                <td>@deal.Amount</td>
+                                <td>@deal.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@(string.IsNullOrEmpty(deal.Tags) ? "No Tags" : deal.Tags)</td>
+                                <td>@(string.IsNullOrEmpty(deal.Note) ? "No Note" : deal.Note)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3>Add Cash Inflow</h3>
+            <input @bind="CashInflowDescription" placeholder="Source" />
+            <input tabindex="amount" type="number" @bind="CashInflowAmount" placeholder="Amount" />
+            <textarea @bind="CashInflowNote" placeholder="Write a note is optional"></textarea>
+            <input @bind="CashInflowTag" placeholder="Tag" />
+
+            <button @onclick="AddCashInflow">Add Cash Inflow</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string CashInflowDescription = string.Empty;
+    private string CashInflowTag = string.Empty;
+    private string Message = string.Empty;
+    private string CashInflowNote = string.Empty;
+    private decimal CashInflowAmount;
+    private decimal TotalCashInflow;
+    private List<Deal> Deals = new();
+    private List<Deal> DealsFiltered = new();
+    private string QuerySearch = string.Empty;
+    private string TagToFilter = string.Empty;
+    private DateTime? DateToFilter = null;
+    private bool IsDateSortingAscending = true;
+
+    protected override void OnInitialized()
+    {
+        Deals = DealService.GetByType(Deal.DealType.CashIn);
+        TotalCashInflow = DealService.GetTotalAmount(Deal.DealType.CashIn);
+        DealsFiltered = Deals;
+    }
+
+    private void AddCashInflow()
+    {
+        if (CashInflowAmount <= 0)
+        {
+            Message = "Amount cannot be negative";
+            return;
+        }
+        var deal = new Deal
+            {
+                Description = CashInflowDescription,
+                Amount = CashInflowAmount,
+                Type = Deal.DealType.CashIn,
+                Tags = CashInflowTag,
+                Note = CashInflowNote,
+                Date = DateTime.Now
+            };
+
+        DealService.AddDeal(deal);
+        OnInitialized();
+
+        CashInflowDescription = string.Empty;
+        CashInflowAmount = 0;
+        CashInflowTag = string.Empty;
+        CashInflowNote = string.Empty;
+    }
+
+    private void Filter()
+    {
+        DealsFiltered = Deals.Where(deal =>
+            (string.IsNullOrWhiteSpace(QuerySearch) || deal.Description.Contains(QuerySearch, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(TagToFilter) || (deal.Tags?.Contains(TagToFilter, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (!DateToFilter.HasValue || deal.Date.Date == DateToFilter.Value.Date)
+        ).ToList();
+    }
+
+    private void Clear()
+    {
+        QuerySearch = string.Empty;
+        TagToFilter = string.Empty;
+        DateToFilter = null;
+        DealsFiltered = Deals;
+    }
+
+    private void SortingByDate()
+    {
+        IsDateSortingAscending = !IsDateSortingAscending;
+        DealsFiltered = DealService.DealsSortedByDate(Deal.DealType.CashIn, IsDateSortingAscending);
+    }
+}

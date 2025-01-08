@@ -1,0 +1,170 @@
+﻿<h3>Dashboard</h3>
+@page "/dashboard"
+@code {
+
+    @using System
+    @using BudgetManager.Components.Model
+    @using BudgetManager.Components.Services
+    @inject DealService DealService
+
+    <div class="overview">
+        <div class="filters-container">
+            <div class="filter-group">
+                <input @bind="SearchText" placeholder="Search source" />
+            </div>
+            <div class="filter-group">
+                <input type="text" @bind="FilterTag" placeholder="Enter Tag" />
+            </div>
+            <div class="filter-group">
+                <label for="filter-date">Date:</label>
+                <input type="date" id="filter-date" @bind="FilterDate" />
+            </div>
+
+            <div class="filter-buttons">
+                <button @onclick="ApplyFilters">SORT</button>
+                <button @onclick="ResetFilters">Reset</button>
+            </div>
+        </div>
+
+        <div class="sort-container">
+            <button @onclick="SortByDate">Sort by Date</button>
+        </div>
+
+        <div class="summary-container">
+            <div class="summary-left">
+                @if (FilteredLoanRecords.Count > 0)
+                    {
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Amount</th>
+                                <th>Issued On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var record in FilteredLoanRecords)
+                                        {
+                                <tr>
+                                    <td>@record.Description</td>
+                                    <td>@record.Amount</td>
+                                    <td>@record.Date.ToString("yyyy-MM-dd")</td>
+                                </tr>
+                                        }
+                        </tbody>
+                    </table>
+}
+            </div>
+
+            <div class="summary-right">
+                <h2>Available Cash: @Remaining</h2>
+                <h2>Total Cashout: @ExpenseTotal</h2>
+                <h2>Cleared Loans: @ClearedLoansTotal</h2>
+                <h2>Uncleared Loans: @RemainingLoansTotal</h2>
+            </div>
+        </div>
+
+        <div class="cashflow-container">
+            <h3>Top 5 Cash In</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cashIn in TopCashIn)
+{
+                        <tr>
+                            <td>@cashIn.Description</td>
+                            <td>@cashIn.Amount</td>
+                            <td>@cashIn.Date.ToString("yyyy-MM-dd")</td>
+                        </tr>
+}
+                </tbody>
+            </table>
+
+            <h3>Top 5 Cash Out</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cashOut in TopCashOut)
+{
+                        <tr>
+                            <td>@cashOut.Description</td>
+                            <td>@cashOut.Amount</td>
+                            <td>@cashOut.Date.ToString("yyyy-MM-dd")</td>
+                        </tr>
+}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @code {
+private List<Deal> LoanRecords = new();
+private List<Deal> FilteredLoanRecords = new();
+private List<Deal> TopCashIn = new();
+private List<Deal> TopCashOut = new();
+private string SearchText = string.Empty;
+private string FilterTag = string.Empty;
+private DateTime? FilterDate = null;
+private decimal ExpenseTotal;
+private decimal LoanTotal;
+private decimal ClearedLoansTotal;
+private decimal RemainingLoansTotal;
+private bool IsDateSortingAscending = true;
+private decimal RemainingIncome;
+
+protected override void OnInitialized()
+{
+    LoanRecords = DealService.GetByType(Deal.RecordType.Loan);
+    RemainingIncome = DealService.GetLeftCashFlow();
+    ExpenseTotal = DealService.GetTotalAmount(Deal.RecordType.CashOut);
+    ClearedLoansTotal = LoanRecords.Where(loan => loan.IsSettled == true).Sum(loan => loan.Amount);
+    RemainingLoansTotal = LoanRecords.Where(loan => loan.IsSettled != true).Sum(loan => loan.Amount);
+
+    // Fetch the top 5 Cash In and Outflows
+    TopCashIn = DealService.GetHighestOperations(Deal.RecordType.CashIn).Take(5).ToList();
+    TopCashOut = DealService.GetHighestOperations(Deal.RecordType.CashOut).Take(5).ToList();
+
+    FilteredLoanRecords = LoanRecords;
+}
+
+private void ApplyFilters()
+{
+    FilteredLoanRecords = LoanRecords.Where(loan =>
+        (string.IsNullOrWhiteSpace(SearchText) || loan.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) &&
+        (string.IsNullOrWhiteSpace(FilterTag) || loan.Tags.Contains(FilterTag, StringComparison.OrdinalIgnoreCase)) &&
+        (!FilterDate.HasValue || loan.Date.Date == FilterDate.Value.Date)
+    ).ToList();
+}
+
+private void ResetFilters()
+{
+    SearchText = string.Empty;
+    FilterTag = string.Empty;
+    FilterDate = null;
+    FilteredLoanRecords = LoanRecords;
+}
+
+private void SortByDate()
+{
+    IsDateSortingAscending = !IsDateSortingAscending;
+    FilteredLoanRecords = DealService.OperationsSortedByDate(
+        Deal.RecordType.Loan,
+        IsDateSortingAscending,
+        LoanRecords
+);
+}
+    }
+
+}

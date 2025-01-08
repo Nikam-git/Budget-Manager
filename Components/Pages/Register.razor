@@ -1,0 +1,119 @@
+﻿@code {
+
+}
+@page "/register"
+@using System.Text.Json
+
+<h3>Register</h3>
+<div>
+    <label for="username">Username:</label>
+    <input id="username" @bind="username" placeholder="Enter username" />
+</div>
+<div>
+    <label for="email">Email:</label>
+    <input id="email" @bind="email" type="email" placeholder="Enter email" />
+</div>
+<div>
+    <label for="password">Password:</label>
+    <input id="password" @bind="password" type="password" placeholder="Enter password" />
+</div>
+<div>
+    <label for="confirmPassword">Confirm Password:</label>
+    <input id="confirmPassword" @bind="confirmPassword" type="password" placeholder="Re-enter password" />
+</div>
+<button @onclick="RegisterUser">Register</button>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p class="error-message">@errorMessage</p>
+}
+
+<div>
+    <button @onclick="SaveUsers">Save Users</button>
+    <button @onclick="LoadUsers">Load Users</button>
+</div>
+
+<p>@message</p>
+
+@code {
+    private string username = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private List<User> users = new();
+    private string message = string.Empty;
+    private string errorMessage = string.Empty;
+
+    private void RegisterUser()
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(confirmPassword))
+        {
+            errorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        if (password != confirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        users.Add(new User { Id = Guid.NewGuid(), Username = username, Email = email, Password = password });
+        username = string.Empty;
+        email = string.Empty;
+        password = string.Empty;
+        confirmPassword = string.Empty;
+        errorMessage = string.Empty;
+        message = "User registered successfully!";
+    }
+
+    private void SaveUsers()
+    {
+        try
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string filePath = Path.Combine(desktopPath, "users.json");
+            var json = JsonSerializer.Serialize(users);
+            System.IO.File.WriteAllText(filePath, json);
+
+            message = "Users saved successfully to the Desktop!";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error saving users: {ex.Message}";
+        }
+    }
+
+    private void LoadUsers()
+    {
+        try
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string filePath = Path.Combine(desktopPath, "users.json");
+
+            if (System.IO.File.Exists(filePath))
+            {
+                var json = System.IO.File.ReadAllText(filePath);
+                users = JsonSerializer.Deserialize<List<User>>(json) ?? new();
+                message = "Users loaded successfully from the Desktop!";
+            }
+            else
+            {
+                message = "No saved users found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error loading users: {ex.Message}";
+        }
+    }
+
+    private class User
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

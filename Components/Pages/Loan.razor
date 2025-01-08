@@ -1,0 +1,181 @@
+﻿<h1>Loan</h1>
+@page "/loan"
+
+@using System
+@using BudgetManager.Components.Model
+@using BudgetManager.Components.Services
+@inject DealService DealService
+
+<div class="loan">
+
+    <div class="debt-top">
+        <div class="filter-group">
+            <input @bind="SearchQuery" placeholder="Search......" />
+        </div>
+        <div class="filter-group">
+            <input type="text" @bind="TagFilter" placeholder="Enter Tags" />
+        </div>
+        <div class="filter-group">
+            <label for="Date">Date:</label>
+            <input type="date" id="date" @bind="FilterDate" />
+        </div>
+
+        <div class="filter-actions">
+            <button @onclick="ApplyFilter">Apply Filter</button>
+            <button @onclick="ResetFilter">Reset Filter</button>
+        </div>
+    </div>
+
+    <div class="expense-middle">
+        <button @onclick="ToggleDateSorting">Sort by Date</button>
+    </div>
+
+    <div class="loan-bottom">
+        <div class="loan-bottom-left">
+            <h3>Total loan</h3>
+            <h2>@AggregateDebt</h2>
+            <h2>Remaining Income</h2>
+            <h2>@AvailableIncome</h2>
+
+            @if (DebtRecords.Count > 0)
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Debt Source</th>
+                            <th>Debt Amount</th>
+                            <th>Debt Issued Date</th>
+                            <th>Tags</th>
+                            <th>Notes</th>
+                            <th>Mark as Cleared</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var debt in FilteredDebtRecords)
+                        {
+                            <tr>
+                                <td>@debt.Title</td>
+                                <td>@debt.Amount</td>
+                                <td>@debt.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@(string.IsNullOrEmpty(debt.Tags) ? "No Tags" : debt.Tags)</td>
+                                <td>@(string.IsNullOrEmpty(debt.Note) ? "No Notes" : debt.Note)</td>
+                                <td>
+                                    @if (debt.IsSettled)
+                                    {
+                                        <span>Settled</span>
+                                    }
+                                    else
+                                    {
+                                        <button @onclick="() => MarkDebtAsCleared(debt.TransactionID)">Mark as Cleared</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3>Record New Debt</h3>
+            <input @bind="NewDebtSource" placeholder="Debt Source" />
+            <input type="number" @bind="NewDebtAmount" placeholder="Debt Amount" />
+            <textarea @bind="NewDebtNote" placeholder="Add a note (optional)"></textarea>
+            <input @bind="NewDebtTag" placeholder="Debt Tag" />
+            <button @onclick="AddNewDebt">Add Debt</button>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string NewDebtSource = string.Empty;
+    private string NewDebtTag = string.Empty;
+    private string NotificationMessage = string.Empty;
+    private string NewDebtNote = string.Empty;
+    private decimal NewDebtAmount;
+    private decimal AggregateDebt;
+    private List<Transaction> DebtRecords = new();
+    private List<Transaction> FilteredDebtRecords = new();
+    private string SearchQuery = string.Empty;
+    private string TagFilter = string.Empty;
+    private DateTime? FilterDate = null;
+    private decimal AvailableIncome;
+    private bool IsDateAscending = true;
+
+    protected override void OnInitialized()
+    {
+        DebtRecords = DealService.GetByType(Deal.RecordType.loan);
+        AggregateDebt = DealService.GetTotalAmount(Deal.RecordType.loan);
+        AvailableIncome = DealService.GetRemainingIncome();
+        FilteredDebtRecords = DebtRecords;
+    }
+
+    private void AddNewDebt()
+    {
+        var Deal = new Deal
+            {
+                Title = NewDebtSource,
+                Amount = NewDebtAmount,
+                Type = Deal.RecordType.loan,
+                Tags = NewDebtTag,
+                Note = NewDebtNote,
+                Date = DateTime.Now
+            };
+
+        DealService.AddTransaction(transaction);
+        DealService.UpdateRemainingIncome(DealService.GetRemainingIncome() + NewDebtAmount);
+
+        OnInitialized();
+
+        NewDebtSource = string.Empty;
+        NewDebtAmount = 0;
+        NewDebtTag = string.Empty;
+        NewDebtNote = string.Empty;
+    }
+
+    private void ApplyFilter()
+    {
+        FilteredDebtRecords = DebtRecords.Where(debt =>
+            (string.IsNullOrWhiteSpace(SearchQuery) || debt.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(TagFilter) || (debt.Tags?.Contains(TagFilter, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (!FilterDate.HasValue || debt.Date.Date == FilterDate.Value.Date)
+        ).ToList();
+    }
+
+    private void ResetFilter()
+    {
+        SearchQuery = string.Empty;
+        TagFilter = string.Empty;
+        FilterDate = null;
+        FilteredDebtRecords = DebtRecords;
+    }
+
+    private void ToggleDateSorting()
+    {
+        IsDateAscending = !IsDateAscending;
+        FilteredDebtRecords = TransactionService.SortTransactionsByDate(Transaction.TransactionsType.Debt, IsDateAscending);
+    }
+
+    private void MarkDebtAsCleared(Guid transactionId)
+    {
+        var targetDebt = DebtRecords.FirstOrDefault(debt => debt.TransactionID == transactionId);
+
+        if (targetDebt != null)
+        {
+            targetDebt.IsSettled = true;
+            DealService.UpdateTransaction(targetDebt);
+
+            DebtRecords.Remove(targetDebt);
+            FilteredDebtRecords = DebtRecords.ToList();
+
+            AvailableIncome -= targetDebt.Amount;
+            DealService.UpdateRemainingIncome(AvailableIncome);
+
+            OnInitialized();
+        }
+        else
+        {
+            NotificationMessage = "The specified debt could not be located in your transactions!";
+        }
+    }
+}
