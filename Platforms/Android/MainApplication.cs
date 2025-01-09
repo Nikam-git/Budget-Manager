@@ -1,7 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace Budget_Manager
+namespace BudgetManager
 {
     [Application]
     public class MainApplication : MauiApplication

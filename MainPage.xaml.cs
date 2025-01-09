@@ -1,4 +1,4 @@
-﻿namespace Budget_Manager
+﻿namespace BudgetManager
 {
     public partial class MainPage : ContentPage
     {

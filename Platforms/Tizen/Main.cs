@@ -2,7 +2,7 @@ using System;
 using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace Budget_Manager
+namespace BudgetManager
 {
     internal class Program : MauiApplication
     {

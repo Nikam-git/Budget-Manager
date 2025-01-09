@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace Budget_Manager
+namespace BudgetManager
 {
     public class Program
     {

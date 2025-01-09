@@ -1,0 +1,8 @@
+C:\Users\student\OneDrive\Desktop\Application Development\BudgetManager\wwwroot\index.html
+C:\Users\student\OneDrive\Desktop\Application Development\BudgetManager\wwwroot\css\app.css
+C:\Users\student\OneDrive\Desktop\Application Development\BudgetManager\wwwroot\css\bootstrap\bootstrap.min.css
+C:\Users\student\OneDrive\Desktop\Application Development\BudgetManager\wwwroot\css\bootstrap\bootstrap.min.css.map
+wwwroot\css\app.css
+wwwroot\css\bootstrap\bootstrap.min.css
+wwwroot\css\bootstrap\bootstrap.min.css.map
+wwwroot\index.html
